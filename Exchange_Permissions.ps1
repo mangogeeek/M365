@@ -13,7 +13,7 @@ function Test-IsGuid {
 # Connect to Microsoft Graph
 try {
     Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Cyan
-    Connect-MgGraph -Scopes "Application.ReadWrite.All AppRoleAssignment.ReadWrite.All" -NoWelcome -ErrorAction Stop
+    Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome -ErrorAction Stop
     Write-Host "Connected successfully." -ForegroundColor Green
 }
 catch {
@@ -78,7 +78,7 @@ $permissions = @(
 )
 
 # Display permissions summary
-Write-Host "`nThe following permissions will be assigned:" -ForegroundColor Cyan
+Write-Host "`nThe following permissions will be assigned (admin consent will be required later):" -ForegroundColor Cyan
 $permissions | Format-Table Name, Type -AutoSize
 
 # Confirm before proceeding
@@ -112,31 +112,17 @@ catch {
     exit
 }
 
-# Grant admin consent for application permissions
-Write-Host "`nGranting admin consent for application permissions..." -ForegroundColor Cyan
-foreach ($perm in $permissions | Where-Object { $_.Type -eq "Role" }) {
-    try {
-        New-MgServicePrincipalAppRoleAssignment `
-            -ServicePrincipalId $app.Id `
-            -PrincipalId $app.Id `
-            -ResourceId $graphSpn.Id `
-            -AppRoleId $perm.Id -ErrorAction Stop
-        
-        Write-Host "  Granted: $($perm.Name)" -ForegroundColor Green
-    }
-    catch {
-        Write-Host "  Failed to grant $($perm.Name): $_" -ForegroundColor Yellow
-    }
-}
-
 # Completion message
 Write-Host "`nProcess completed. Summary:" -ForegroundColor Cyan
 Write-Host "- Assigned $($permissions.Count) permissions total" -ForegroundColor White
-Write-Host "- Granted admin consent for $($permissions.Where{$_.Type -eq 'Role'}.Count) application permissions" -ForegroundColor White
+Write-Host "- $($permissions.Where{$_.Type -eq 'Role'}.Count) application permissions require admin consent" -ForegroundColor Yellow
+Write-Host "- $($permissions.Where{$_.Type -eq 'Scope'}.Count) delegated permissions will require user consent" -ForegroundColor Yellow
 
-Write-Host "`nVerify in Azure Portal under:" -ForegroundColor Green
-Write-Host "Azure AD > App Registrations > $($app.DisplayName) > API permissions" -ForegroundColor Green
-Write-Host "`nNote: Delegated permissions will require user consent during login." -ForegroundColor Yellow
+Write-Host "`nNext steps:" -ForegroundColor Green
+Write-Host "1. An administrator must grant consent for the application permissions" -ForegroundColor Yellow
+Write-Host "2. Users will need to consent to delegated permissions during sign-in" -ForegroundColor Yellow
+Write-Host "3. Verify in Azure Portal under:" -ForegroundColor Green
+Write-Host "   Azure AD > App Registrations > $($app.DisplayName) > API permissions" -ForegroundColor Green
 
 # Disconnect (optional)
 # Disconnect-MgGraph
